@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة تنسيق تعارضات البنية التحتية - أمانة المنطقة الشرقية</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f6; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .sortable { cursor: pointer; transition: background 0.2s; }
+        .sortable:hover { background-color: #cbd5e1 !important; }
+        .modal-active { overflow: hidden; }
+        
+        /* تأثيرات رمز الوثيقة */
+        .pdf-icon { 
+            color: rgba(16, 185, 129, 0.75); 
+            vertical-align: middle; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: pulse-glow 2s infinite;
+            cursor: pointer;
+        }
+        .pdf-icon:hover { 
+            color: rgba(5, 150, 105, 1); 
+            transform: scale(1.2) translateY(-2px);
+            animation: none; 
+            filter: drop-shadow(0 4px 4px rgba(16, 185, 129, 0.4));
+        }
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.2)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6)); }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-y-auto" id="mainScrollArea">
+            
+            <header class="bg-white shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border-b border-slate-200 px-8 py-3 flex justify-between items-center gap-4 flex-wrap">
+                <div class="flex items-center gap-5">
+                    <div class="shrink-0 flex items-center justify-center w-24 h-24 overflow-hidden">
+                        <img src="https://lh3.googleusercontent.com/d/1CvZm75Uys3DjhLdQliqmrb_fkj-RaTiW" alt="أمانة المنطقة الشرقية" class="w-full h-full object-contain">
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <h1 class="text-lg md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-l from-slate-900 to-slate-700 leading-tight mb-1">منصة تنسيق تعارضات البنية التحتية</h1>
+                        <h2 class="text-sm md:text-base font-bold text-[#008c62]">لمشاريع تصريف مياه الأمطار بأمانة المنطقة الشرقية</h2>
+                        <p class="text-xs text-slate-500 mt-1.5 font-semibold flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            منصة تفاعلية لتنسيق تعارضات البنى التحتية
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="shrink-0 flex items-center justify-center w-36 h-16 md:w-40 md:h-20">
+                    <img src="https://lh3.googleusercontent.com/d/1-Uhcwi1DIvFoRjVcmvK6HrZulPnPMGX0" alt="رؤية 2030" class="w-full h-full object-contain">
+                </div>
+            </header>
+
+            <main class="p-6 md:p-8 space-y-6 max-w-screen-2xl mx-auto w-full">
+                
+                <div class="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">لوحة المتابعة والتحكم</h3>
+                        <p class="text-sm text-slate-500 mt-1">نظرة شاملة لحالة المشاريع والردود</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-50 text-slate-800 text-sm font-bold px-4 py-2.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3">
+                            <span id="statusText">بانتظار التهيئة...</span>
+                            <span id="statusIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                        </div>
+
+                        <button id="updateBtn" onclick="updateDataFromServer()" disabled class="bg-[#eff8ff] text-[#0074b7] hover:bg-[#e0f0fe] border border-[#bce0fd] text-sm font-bold px-5 py-2.5 rounded-lg shadow-sm transition-all flex items-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span>تحديث البيانات (F5)</span>
+                            <svg class="w-4 h-4 transition-transform duration-300 hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+
+                        <button onclick="exportToExcel()" class="bg-[#009e60] hover:bg-[#00824f] text-white text-sm font-bold px-5 py-2.5 rounded-lg shadow-sm transform hover:-translate-y-0.5 transition-all flex items-center gap-2.5 group">
+                            <span>تصدير Excel</span>
+                            <svg class="w-4 h-4 transition-transform duration-300 group-hover:-translate-y-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <section id="slicersSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                            أدوات الفلترة الذكية (Slicers)
+                        </h4>
+                        <button onclick="resetFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold transition">إعادة تعيين الفلاتر ↺</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">البحث عن مشروع معين</label>
+                            <input type="text" id="searchInput" placeholder="اكتب اسم الحي أو المشروع..." class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs transition disabled:opacity-50" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">المنطقة / المدينة</label>
+                            <select id="cityFilter" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs transition disabled:opacity-50" disabled>
+                                <option value="all">كل المدن والأحياء</option>
+                                <option value="الدمام">الدمام</option>
+                                <option value="الخبر">الخبر</option>
+                                <option value="الظهران">الظهران</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">الحالة العامة للمشروع</label>
+                            <select id="statusFilter" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs transition disabled:opacity-50" disabled>
+                                <option value="all">الكل</option>
+                                <option value="تعارض">مشاريع متعارضة (يوجد تعارض)</option>
+                                <option value="جاهز">مشاريع جاهزة (لا يوجد تعارض)</option>
+                                <option value="جاري">مشاريع قيد التنسيق / لم ترد</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">الجهات</label>
+                            <select id="agencyFilter" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs transition disabled:opacity-50" disabled>
+                                <option value="all">كل الجهات الثمانية</option>
+                                <option value="aramco">أرامكو السعودية</option>
+                                <option value="swcc">الهيئة السعودية للمياه</option>
+                                <option value="se">الشركة السعودية للكهرباء</option>
+                                <option value="nwc">شركة المياه الوطنية</option>
+                                <option value="stc">الاتصالات stc</option>
+                                <option value="mobily">موبايلي</option>
+                                <option value="zain">زين</option>
+                                <option value="salama">سلام</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">حالة التعارض للجهة</label>
+                            <select id="conflictTypeFilter" class="w-full bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs transition disabled:opacity-50" disabled>
+                                <option value="all">الكل</option>
+                                <option value="conflict">يوجد تعارض</option>
+                                <option value="no_conflict">لا يوجد تعارض</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="indicatorCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md hover:border-blue-200 cursor-pointer group" onclick="document.getElementById('statusFilter').value='all'; filterData();">
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 group-hover:text-blue-600 transition-colors">إجمالي المشاريع</p>
+                            <h3 class="text-2xl font-black text-slate-800 mt-1" id="totalProjects">0</h3>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md hover:border-red-200 cursor-pointer group" onclick="document.getElementById('statusFilter').value='تعارض'; filterData();">
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 group-hover:text-red-600 transition-colors">بها تعارض مؤكد</p>
+                            <h3 class="text-2xl font-black text-red-600 mt-1" id="conflictProjects">0</h3>
+                        </div>
+                        <div class="p-3 bg-red-50 text-red-600 rounded-xl group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md hover:border-emerald-200 cursor-pointer group" onclick="document.getElementById('statusFilter').value='جاهز'; filterData();">
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 group-hover:text-emerald-600 transition-colors">لا يوجد تعارض</p>
+                            <h3 class="text-2xl font-black text-emerald-600 mt-1" id="noConflictProjects">0</h3>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                    </div>
+                    <div id="readyProjectsCard" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md hover:border-teal-200 cursor-pointer group" onclick="document.getElementById('statusFilter').value='جاهز'; filterData();">
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 group-hover:text-teal-600 transition-colors">جاهزة تماماً للتنفيذ</p>
+                            <h3 class="text-2xl font-black text-teal-600 mt-1" id="readyProjects">0</h3>
+                        </div>
+                        <div class="p-3 bg-teal-50 text-teal-600 rounded-xl group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between transition hover:shadow-md hover:border-amber-200 cursor-pointer group" onclick="document.getElementById('statusFilter').value='جاري'; filterData();">
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 group-hover:text-amber-500 transition-colors">قيد الدراسة والتنسيق</p>
+                            <h3 class="text-2xl font-black text-amber-500 mt-1" id="pendingProjects">0</h3>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-500 rounded-xl group-hover:scale-110 transition-transform"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                    </div>
+                </section>
+
+                <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center">
+                        <h4 class="text-sm font-bold text-slate-900 mb-4 self-start">توزيع المشاريع حسب النطاق الجغرافي</h4>
+                        <div class="relative w-full h-56"><canvas id="cityPieChart"></canvas></div>
+                        <p class="text-[10px] text-slate-400 mt-2 text-right w-full">* اضغط على الشريحة لفلترة الجدول</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
+                        <h4 class="text-sm font-bold text-slate-900 mb-4">ملخص الاستجابة وحالات التعارض في الجهات الرئيسية</h4>
+                        <div class="relative w-full h-56"><canvas id="agenciesBarChart"></canvas></div>
+                        <p class="text-[10px] text-slate-400 mt-2 text-right w-full">* اضغط على عمود الجهة لفلترة الجدول</p>
+                    </div>
+                </section>
+
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-900">سجل خطابات الجهات والتعارضات المرصودة تفصيلياً</h4>
+                            <p class="text-xs text-slate-500 mt-0.5">انقر على صندوق بيانات الجهة لتعديل الخطابات ورفع الوثائق (PDF) عبر قاعدة البيانات السحابية.</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                            <label class="text-xs font-bold text-slate-600">العرض:</label>
+                            <select id="pageSize" onchange="changePageSize()" class="bg-transparent border-none text-slate-800 focus:outline-none text-xs font-bold cursor-pointer">
+                                <option value="25">25 مشروع</option>
+                                <option value="50">50 مشروع</option>
+                                <option value="100">100 مشروع</option>
+                                <option value="999999">عرض الكل</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-auto h-[55vh] min-h-[400px] w-full relative">
+                        <table class="w-full text-right whitespace-nowrap border-collapse">
+                            <thead>
+                                <tr class="text-[11px] font-bold text-slate-700 shadow-sm border-b border-slate-200">
+                                    <th onclick="handleSort('id')" class="sortable px-4 py-3 sticky top-0 right-0 bg-slate-100 z-30 shadow-[inset_1px_-1px_0_#e2e8f0,inset_0_-1px_0_#e2e8f0] select-none">م <span id="sort-id"></span></th>
+                                    
+                                    <th onclick="handleSort('name')" class="sortable px-6 py-3 sticky top-0 right-10 bg-slate-100 z-30 shadow-[inset_1px_-1px_0_#e2e8f0,inset_0_-1px_0_#e2e8f0] min-w-[280px] select-none group">
+                                        <div class="flex items-center gap-1">اسم المشروع <span id="sort-name" class="transition-colors"></span></div>
+                                    </th>
+                                    
+                                    <th onclick="handleSort('city')" class="sortable px-4 py-3 sticky top-0 bg-slate-100 z-20 shadow-[inset_0_-1px_0_#e2e8f0] select-none">المدينة <span id="sort-city"></span></th>
+                                    
+                                    <th id="th-aramco" class="px-6 py-3 sticky top-0 border-r border-slate-200 bg-blue-50 text-blue-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">أرامكو السعودية</th>
+                                    <th id="th-swcc" class="px-6 py-3 sticky top-0 bg-emerald-50 text-emerald-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">الهيئة السعودية للمياه</th>
+                                    <th id="th-se" class="px-6 py-3 sticky top-0 bg-amber-50 text-amber-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">الشركة السعودية للكهرباء</th>
+                                    <th id="th-nwc" class="px-6 py-3 sticky top-0 bg-purple-50 text-purple-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">شركة المياه الوطنية</th>
+                                    <th id="th-stc" class="px-6 py-3 sticky top-0 bg-indigo-50 text-indigo-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">الاتصالات stc</th>
+                                    <th id="th-mobily" class="px-6 py-3 sticky top-0 bg-sky-50 text-sky-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">موبايلي</th>
+                                    <th id="th-zain" class="px-6 py-3 sticky top-0 bg-fuchsia-50 text-fuchsia-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">زين</th>
+                                    <th id="th-salama" class="px-6 py-3 sticky top-0 bg-teal-50 text-teal-700 z-20 shadow-[inset_0_-1px_0_#e2e8f0]">سلام</th>
+                                    
+                                    <th onclick="handleSort('status')" class="sortable px-6 py-3 sticky top-0 left-0 bg-slate-100 z-30 shadow-[inset_-1px_-1px_0_#e2e8f0,inset_0_-1px_0_#e2e8f0] text-center select-none group">
+                                        <div class="flex items-center justify-center gap-1">الوضعية العامة <span id="sort-status" class="transition-colors"></span></div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-xs text-slate-700" id="masterTableBody">
+                                <tr>
+                                    <td colspan="12" class="px-6 py-12 text-center text-slate-400 font-bold">جاري تحميل البيانات من الخادم...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="paginationControls" class="px-6 py-3 border-t border-slate-100 bg-slate-50 flex justify-between items-center hidden">
+                        <span class="text-xs font-bold text-slate-500" id="pageInfo">صفحة 1 من 1</span>
+                        <div class="flex gap-2">
+                            <button onclick="prevPage()" id="btnPrev" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs font-bold hover:bg-slate-100 disabled:opacity-50 transition-colors">السابق</button>
+                            <button onclick="nextPage()" id="btnNext" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs font-bold hover:bg-slate-100 disabled:opacity-50 transition-colors">التالي</button>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة الأساسية -->
+    <div id="projectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800" id="modalProjectName">تفاصيل المشروع</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><p class="text-[10px] text-slate-400">رقم المسلسل</p><p class="font-bold text-sm" id="modalId"></p></div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><p class="text-[10px] text-slate-400">المدينة</p><p class="font-bold text-sm" id="modalCity"></p></div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm"><p class="text-[10px] text-slate-400">الوضعية العامة للمشروع</p><div id="modalStatus" class="mt-1"></div></div>
+                </div>
+                <h4 class="text-sm font-bold text-slate-700 mb-4 pb-2">تفاصيل الردود والمخاطبات للجهات الخدمية الثمانية</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5" id="modalAgenciesGrid"></div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-white flex justify-end">
+                <!-- تم تغيير اسم الزر هنا إلى "إغلاق" -->
+                <button onclick="closeModal()" class="bg-slate-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition shadow-sm">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة للتعديل -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-blue-50 flex justify-between items-center">
+                <h3 class="text-md font-bold text-blue-900 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    تعديل البيانات ورفع الوثائق
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-red-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-500 font-bold mb-4">المشروع: <span id="editProjectName" class="text-slate-800"></span><br>الجهة: <span id="editAgencyName" class="text-blue-600"></span></p>
+                
+                <input type="hidden" id="editProjectId">
+                <input type="hidden" id="editAgencyKey">
+                
+                <div class="border border-slate-200 p-3 rounded-lg bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">رقم الخطاب الصادر</label>
+                    <input type="text" id="editSadir" class="w-full bg-white border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm mb-2">
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">إرفاق وثيقة الصادر (PDF)</label>
+                    <input type="file" id="editSadirFile" accept="application/pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <div id="currentSadirLink" class="text-[10px] mt-2 font-bold break-all"></div>
+                </div>
+
+                <div class="border border-slate-200 p-3 rounded-lg bg-slate-50">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">رقم الخطاب الوارد</label>
+                    <input type="text" id="editWarid" class="w-full bg-white border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm mb-2">
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1">إرفاق وثيقة الوارد (PDF)</label>
+                    <input type="file" id="editWaridFile" accept="application/pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <div id="currentWaridLink" class="text-[10px] mt-2 font-bold break-all"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">حالة التعارض (الرد)</label>
+                    <textarea id="editState" rows="3" class="w-full bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onclick="closeEditModal()" class="bg-white border border-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded hover:bg-slate-100 transition">إلغاء</button>
+                <button onclick="saveEditData()" id="saveEditBtn" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded shadow hover:bg-blue-700 transition flex items-center gap-2">
+                    حفظ وتحديث الملف
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxIOLH2YWdDhu649GWGzUL-c5elP6BPezWfrpirg6M4x7JEeyr0j56gwcglrY8fWFxQ/exec";
+
+        let masterData = [];
+        let currentFilteredData = []; 
+        let cityPieChart = null;
+        let agenciesBarChart = null;
+        
+        let currentPage = 1;
+        let rowsPerPage = 25;
+        let sortCol = '';
+        let sortAsc = true;
+        let globalColMap = {};
+
+        const agenciesList = [
+            { key: 'aramco', name: 'أرامكو السعودية' },
+            { key: 'swcc', name: 'الهيئة السعودية للمياه' },
+            { key: 'se', name: 'الشركة السعودية للكهرباء' },
+            { key: 'nwc', name: 'شركة المياه الوطنية' },
+            { key: 'stc', name: 'الاتصالات stc' },
+            { key: 'mobily', name: 'موبايلي' },
+            { key: 'zain', name: 'زين' },
+            { key: 'salama', name: 'سلام' }
+        ];
+
+        window.onload = function() {
+            initOrUpdateCharts([]);
+            updateSortIcons();
+            
+            document.getElementById('searchInput').addEventListener('input', () => { currentPage = 1; filterData(); });
+            document.getElementById('cityFilter').addEventListener('change', () => { currentPage = 1; filterData(); });
+            document.getElementById('statusFilter').addEventListener('change', () => { currentPage = 1; filterData(); });
+            document.getElementById('agencyFilter').addEventListener('change', () => { currentPage = 1; filterData(); });
+            document.getElementById('conflictTypeFilter').addEventListener('change', () => { currentPage = 1; filterData(); });
+
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                    e.preventDefault();
+                    updateDataFromServer();
+                }
+            });
+
+            loadDataFromAPI();
+        };
+
+        function enableFilters() {
+            document.querySelectorAll('input:not([type="file"]), select').forEach(el => el.disabled = false);
+            document.getElementById('paginationControls').classList.remove('hidden');
+        }
+
+        function updateDataFromServer() {
+            loadDataFromAPI();
+        }
+
+        async function loadDataFromAPI() {
+            document.getElementById('statusText').innerText = "جاري الاتصال...";
+            document.getElementById('statusIndicator').classList.replace('bg-slate-400', 'bg-amber-500');
+            document.getElementById('statusIndicator').classList.add('animate-pulse');
+            document.getElementById('updateBtn').disabled = true;
+
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                processExcelData(data);
+                
+                document.getElementById('statusText').innerText = `تم استيراد ${masterData.length} مشروع (Live)`;
+                document.getElementById('statusIndicator').classList.replace('bg-amber-500', 'bg-emerald-500');
+                document.getElementById('updateBtn').disabled = false;
+            } catch (error) {
+                console.error("API Connection Failed:", error);
+                document.getElementById('statusText').innerText = "فشل الاتصال";
+                document.getElementById('statusIndicator').classList.replace('bg-amber-500', 'bg-red-500');
+                document.getElementById('masterTableBody').innerHTML = '<tr><td colspan="12" class="px-6 py-12 text-center text-red-500 font-bold">فشل الاتصال بقاعدة البيانات. يرجى التأكد من الرابط أو التهيئات.</td></tr>';
+                document.getElementById('updateBtn').disabled = false;
+            }
+        }
+
+        function cleanString(val) {
+            if (val === undefined || val === null) return "-";
+            const str = String(val).trim();
+            return str === "" ? "-" : str;
+        }
+
+        function extractCity(projectName) {
+            if (!projectName || projectName === '-') return 'غير محدد';
+            if (projectName.includes('الدمام')) return 'الدمام';
+            if (projectName.includes('الخبر')) return 'الخبر';
+            if (projectName.includes('الظهران')) return 'الظهران';
+            return 'غير محدد';
+        }
+
+        function determineOverallStatus(agencies) {
+            let hasConflict = false; let isPending = false;
+            for (const key in agencies) {
+                if(!agencies[key] || !agencies[key].state) continue;
+                const state = agencies[key].state;
+                if (state.includes('يوجد تعارض') && !state.includes('لا')) hasConflict = true;
+                else if (state === '-' || state.includes('لم يتم الرد') || state === '') isPending = true;
+            }
+            if (hasConflict) return 'تعارض';
+            if (isPending) return 'جاري';
+            return 'جاهز';
+        }
+
+        function processExcelData(data) {
+            masterData = [];
+            globalColMap = { id: 2, name: 3, aramco: 4, swcc: 9, se: 14, nwc: 19, stc: 24, mobily: 29, zain: 34, salama: 39 };
+            let startRowIndex = 2;
+
+            for (let i = 0; i < Math.min(20, data.length); i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                let foundNameHeader = false;
+                for (let j = 0; j < row.length; j++) {
+                    let cellData = row[j] || {};
+                    let val = String(cellData.text || "").trim();
+                    if (val === "المشاريع" || val === "اسم المشروع") { globalColMap.name = j; foundNameHeader = true; }
+                    else if (val === "م" || val === "م.") globalColMap.id = j;
+                    else if (val.includes("أرامكو")) globalColMap.aramco = j;
+                    else if (val.includes("الهيئة السعودية للمياه")) globalColMap.swcc = j;
+                    else if (val.includes("الكهرباء")) globalColMap.se = j;
+                    else if (val.includes("المياه الوطنية")) globalColMap.nwc = j;
+                    else if (val.toLowerCase().includes("stc")) globalColMap.stc = j;
+                    else if (val.includes("موبايلي")) globalColMap.mobily = j;
+                    else if (val.includes("زين")) globalColMap.zain = j;
+                    else if (val.includes("سلام")) globalColMap.salama = j;
+                }
+                if (foundNameHeader) {
+                    let nextRow = data[i+1];
+                    let hasSubHeader = false;
+                    if (nextRow) {
+                        for(let k=0; k<nextRow.length; k++){
+                            if(String(nextRow[k]?.text || "").includes('الصادر') || String(nextRow[k]?.text || "").includes('الوارد')) { hasSubHeader = true; break; }
+                        }
+                    }
+                    startRowIndex = hasSubHeader ? i + 2 : i + 1;
+                    break;
+                }
+            }
+
+            const extractAgency = (row, colIndex) => {
+                if (colIndex === undefined) return { sadir: '-', sadirUrl: null, warid: '-', waridUrl: null, state: '-' };
+                return {
+                    sadir: cleanString(row[colIndex]?.text),
+                    sadirUrl: row[colIndex+1]?.url || null,
+                    warid: cleanString(row[colIndex+2]?.text),
+                    waridUrl: row[colIndex+3]?.url || null,
+                    state: cleanString(row[colIndex+4]?.text)
+                };
+            };
+
+            for (let i = startRowIndex; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+                
+                const projectName = cleanString(row[globalColMap.name]?.text);
+                if (projectName === '-' || projectName === 'المشاريع' || projectName.includes('المشاريع المستقبلية') || projectName.includes('الحلول العاجلة')) continue;
+                
+                const id = cleanString(row[globalColMap.id]?.text);
+                const agenciesData = {
+                    aramco: extractAgency(row, globalColMap.aramco),
+                    swcc:   extractAgency(row, globalColMap.swcc),
+                    se:     extractAgency(row, globalColMap.se),
+                    nwc:    extractAgency(row, globalColMap.nwc),
+                    stc:    extractAgency(row, globalColMap.stc),
+                    mobily: extractAgency(row, globalColMap.mobily),
+                    zain:   extractAgency(row, globalColMap.zain),
+                    salama: extractAgency(row, globalColMap.salama)
+                };
+
+                masterData.push({
+                    excelRowIndex: i, 
+                    id: id === '-' ? (masterData.length + 1) : (isNaN(parseInt(id)) ? id : parseInt(id)),
+                    name: projectName,
+                    city: extractCity(projectName),
+                    status: determineOverallStatus(agenciesData),
+                    ...agenciesData
+                });
+            }
+
+            enableFilters();
+            currentPage = 1;
+            filterData();
+        }
+
+        function getBase64(file) {
+           return new Promise((resolve, reject) => {
+               const reader = new FileReader();
+               reader.readAsDataURL(file);
+               reader.onload = () => resolve(reader.result.split(',')[1]);
+               reader.onerror = error => reject(error);
+           });
+        }
+
+        function openEditModal(projectIdStr, agencyKey, event) {
+            event.stopPropagation();
+            
+            const projectId = isNaN(parseInt(projectIdStr)) ? projectIdStr : parseInt(projectIdStr);
+            const project = masterData.find(p => p.id === projectId);
+            if(!project) return;
+
+            const agencyName = agenciesList.find(a => a.key === agencyKey).name;
+            const data = project[agencyKey];
+
+            document.getElementById('editProjectId').value = project.id;
+            document.getElementById('editAgencyKey').value = agencyKey;
+            document.getElementById('editProjectName').innerText = project.name;
+            document.getElementById('editAgencyName').innerText = agencyName;
+            
+            document.getElementById('editSadir').value = data.sadir === '-' ? '' : data.sadir;
+            document.getElementById('editWarid').value = data.warid === '-' ? '' : data.warid;
+            document.getElementById('editState').value = data.state === '-' ? '' : data.state;
+            
+            document.getElementById('editSadirFile').value = '';
+            document.getElementById('editWaridFile').value = '';
+
+            const formatLink = (url) => url ? `<a href="${url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> الوثيقة الحالية مرتبطة</a>` : '<span class="text-slate-400">لا توجد وثيقة مرفقة حالياً</span>';
+            
+            document.getElementById('currentSadirLink').innerHTML = formatLink(data.sadirUrl);
+            document.getElementById('currentWaridLink').innerHTML = formatLink(data.waridUrl);
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function saveEditData() {
+            const btn = document.getElementById('saveEditBtn');
+            btn.innerHTML = 'جاري الحفظ والرفع...'; 
+            btn.disabled = true;
+
+            const projectIdStr = document.getElementById('editProjectId').value;
+            const projectId = isNaN(parseInt(projectIdStr)) ? projectIdStr : parseInt(projectIdStr);
+            const agencyKey = document.getElementById('editAgencyKey').value;
+            
+            const newSadir = document.getElementById('editSadir').value.trim() || '-';
+            const newWarid = document.getElementById('editWarid').value.trim() || '-';
+            const newState = document.getElementById('editState').value.trim() || '-';
+
+            const projectIndex = masterData.findIndex(p => p.id === projectId);
+            if(projectIndex === -1) return;
+
+            const project = masterData[projectIndex];
+            const agencyName = agenciesList.find(a => a.key === agencyKey).name;
+            const excelRow = project.excelRowIndex + 1; 
+            const excelColSadir = globalColMap[agencyKey] + 1;
+
+            const sadirFileInput = document.getElementById('editSadirFile');
+            const waridFileInput = document.getElementById('editWaridFile');
+
+            let payload = {
+                agency_name: agencyName,
+                row: excelRow,
+                col_sadir: excelColSadir,
+                sadir: newSadir,
+                warid: newWarid,
+                state: newState,
+                old_sadir_url: project[agencyKey].sadirUrl,
+                old_warid_url: project[agencyKey].waridUrl
+            };
+
+            try {
+                if (sadirFileInput.files.length > 0) {
+                    const file = sadirFileInput.files[0];
+                    payload.sadir_file = { name: file.name, mimeType: file.type, base64: await getBase64(file) };
+                }
+                if (waridFileInput.files.length > 0) {
+                    const file = waridFileInput.files[0];
+                    payload.warid_file = { name: file.name, mimeType: file.type, base64: await getBase64(file) };
+                }
+
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    masterData[projectIndex][agencyKey].sadir = newSadir;
+                    masterData[projectIndex][agencyKey].warid = newWarid;
+                    masterData[projectIndex][agencyKey].state = newState;
+                    if(result.sadirUrl) masterData[projectIndex][agencyKey].sadirUrl = result.sadirUrl;
+                    if(result.waridUrl) masterData[projectIndex][agencyKey].waridUrl = result.waridUrl;
+
+                    masterData[projectIndex].status = determineOverallStatus({
+                        aramco: masterData[projectIndex].aramco, swcc: masterData[projectIndex].swcc,
+                        se: masterData[projectIndex].se, nwc: masterData[projectIndex].nwc,
+                        stc: masterData[projectIndex].stc, mobily: masterData[projectIndex].mobily,
+                        zain: masterData[projectIndex].zain, salama: masterData[projectIndex].salama
+                    });
+                    
+                    filterData();
+                    closeEditModal();
+                } else {
+                    alert("حدث خطأ في الخادم: " + (result.message || "غير معروف"));
+                }
+            } catch (error) {
+                console.error(error);
+                alert("حدث خطأ أثناء الاتصال أو رفع الملفات.");
+            } finally {
+                btn.innerHTML = 'حفظ وتحديث الملف'; 
+                btn.disabled = false;
+            }
+        }
+
+        function getRowActiveStatus(item, selectedAgency) {
+            if (selectedAgency === 'all') return item.status;
+            const state = item[selectedAgency]?.state || '';
+            if (state.includes('يوجد') && !state.includes('لا')) return 'تعارض';
+            else if (state.includes('لا') && (state.includes('يوجد') || state.includes('تعارض') || state.includes('تعرض'))) return 'جاهز';
+            else return 'جاري';
+        }
+
+        function filterData() {
+            if (masterData.length === 0) return;
+
+            const searchValue = document.getElementById('searchInput').value.trim().toLowerCase();
+            const cityValue = document.getElementById('cityFilter').value;
+            const statusValue = document.getElementById('statusFilter').value;
+            const agencyValue = document.getElementById('agencyFilter').value;
+            const conflictTypeValue = document.getElementById('conflictTypeFilter').value;
+
+            let filtered = masterData;
+
+            if (searchValue) filtered = filtered.filter(item => String(item.id).includes(searchValue) || item.name.toLowerCase().includes(searchValue));
+            if (cityValue !== 'all') filtered = filtered.filter(item => item.city === cityValue);
+            if (statusValue !== 'all') filtered = filtered.filter(item => getRowActiveStatus(item, agencyValue) === statusValue);
+            
+            if (conflictTypeValue !== 'all') {
+                if (agencyValue !== 'all') {
+                    filtered = filtered.filter(item => {
+                        const state = item[agencyValue]?.state || '';
+                        if (conflictTypeValue === 'conflict') return state.includes('يوجد') && !state.includes('لا');
+                        else if (conflictTypeValue === 'no_conflict') return state.includes('لا') && (state.includes('يوجد') || state.includes('تعارض'));
+                        return true;
+                    });
+                } else {
+                    filtered = filtered.filter(item => {
+                        let hasConflict = false; let hasNoConflict = false;
+                        for (const key in item) {
+                            if (item[key] && item[key].state) {
+                                const s = item[key].state;
+                                if (s.includes('يوجد') && !s.includes('لا')) hasConflict = true;
+                                if (s.includes('لا') && (s.includes('يوجد') || s.includes('تعارض'))) hasNoConflict = true;
+                            }
+                        }
+                        return conflictTypeValue === 'conflict' ? hasConflict : hasNoConflict;
+                    });
+                }
+            }
+
+            if (sortCol) {
+                filtered.sort((a, b) => {
+                    let valA = a[sortCol]; let valB = b[sortCol];
+                    if (sortCol === 'status') { valA = getRowActiveStatus(a, agencyValue); valB = getRowActiveStatus(b, agencyValue); }
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+                    if (valA < valB) return sortAsc ? -1 : 1;
+                    if (valA > valB) return sortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            currentFilteredData = filtered;
+            updateIndicatorCards(currentFilteredData, agencyValue);
+            initOrUpdateCharts(currentFilteredData, agencyValue);
+            renderTablePage();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('cityFilter').value = 'all';
+            document.getElementById('statusFilter').value = 'all';
+            document.getElementById('agencyFilter').value = 'all';
+            document.getElementById('conflictTypeFilter').value = 'all';
+            sortCol = ''; updateSortIcons();
+            currentPage = 1;
+            filterData();
+        }
+
+        function handleSort(col) {
+            if (sortCol === col) sortAsc = !sortAsc;
+            else { sortCol = col; sortAsc = true; }
+            updateSortIcons();
+            currentPage = 1; filterData();
+        }
+
+        function updateSortIcons() {
+            const defaultSortIcon = '<svg class="w-3 h-3 inline-block text-slate-300 group-hover:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>'; 
+            const ascIcon = '<svg class="w-3 h-3 inline-block text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>';
+            const descIcon = '<svg class="w-3 h-3 inline-block text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>';
+
+            document.getElementById('sort-id').innerHTML = '';
+            document.getElementById('sort-city').innerHTML = '';
+            document.getElementById('sort-name').innerHTML = defaultSortIcon;
+            document.getElementById('sort-status').innerHTML = defaultSortIcon;
+
+            if (sortCol) {
+                const icon = sortAsc ? ascIcon : descIcon;
+                const el = document.getElementById(`sort-${sortCol}`);
+                if (el) el.innerHTML = icon;
+            }
+        }
+
+        function changePageSize() {
+            rowsPerPage = parseInt(document.getElementById('pageSize').value);
+            currentPage = 1; renderTablePage();
+        }
+
+        function nextPage() { if (currentPage * rowsPerPage < currentFilteredData.length) { currentPage++; renderTablePage(); } }
+        function prevPage() { if (currentPage > 1) { currentPage--; renderTablePage(); } }
+
+        function renderTablePage() {
+            const tbody = document.getElementById('masterTableBody');
+            tbody.innerHTML = '';
+            const selectedAgency = document.getElementById('agencyFilter').value;
+
+            agenciesList.forEach(ag => {
+                const th = document.getElementById('th-' + ag.key);
+                if (th) th.classList.toggle('hidden', !(selectedAgency === 'all' || selectedAgency === ag.key));
+            });
+
+            if (currentFilteredData.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="12" class="px-6 py-12 text-center text-slate-400 font-bold">لا يوجد مشاريع توافق خيارات الفلترة المحددة.</td></tr>';
+                 document.getElementById('pageInfo').innerText = 'صفحة 0 من 0';
+                 document.getElementById('btnPrev').disabled = true; document.getElementById('btnNext').disabled = true;
+                 return;
+            }
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const paginatedItems = currentFilteredData.slice(startIndex, endIndex);
+
+            paginatedItems.forEach(item => {
+                let activeStatus = getRowActiveStatus(item, selectedAgency);
+                let generalBadge = '';
+                if(activeStatus === 'جاهز') generalBadge = '<span class="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm block text-center">لا يوجد تعارض</span>';
+                else if(activeStatus === 'تعارض') generalBadge = '<span class="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm block text-center">يوجد تعارض</span>';
+                else generalBadge = '<span class="bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm block text-center">جاري التنسيق</span>';
+
+                const getHiddenClass = (agKey) => (selectedAgency === 'all' || selectedAgency === agKey) ? '' : 'hidden';
+
+                const row = `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100 cursor-pointer" ondblclick="openModal('${item.id}')">
+                        <td class="px-4 py-4 font-bold text-slate-900 sticky right-0 bg-white z-10 shadow-[inset_1px_0_0_#f1f5f9]">${item.id}</td>
+                        <td class="px-6 py-4 font-bold text-slate-800 sticky right-10 bg-white z-10 max-w-xs whitespace-normal shadow-[inset_1px_0_0_#f1f5f9] hover:text-blue-600" onclick="openModal('${item.id}')">${item.name}</td>
+                        <td class="px-4 py-4 text-slate-500 font-bold whitespace-nowrap">${item.city}</td>
+                        <td class="px-4 py-3 border-r border-slate-100 bg-slate-50/50 ${getHiddenClass('aramco')}">${formatAgencyCell(item, 'aramco')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('swcc')}">${formatAgencyCell(item, 'swcc')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('se')}">${formatAgencyCell(item, 'se')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('nwc')}">${formatAgencyCell(item, 'nwc')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('stc')}">${formatAgencyCell(item, 'stc')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('mobily')}">${formatAgencyCell(item, 'mobily')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('zain')}">${formatAgencyCell(item, 'zain')}</td>
+                        <td class="px-4 py-3 bg-slate-50/50 ${getHiddenClass('salama')}">${formatAgencyCell(item, 'salama')}</td>
+                        <td class="px-4 py-4 sticky left-0 bg-white z-10 shadow-[inset_-1px_0_0_#f1f5f9]">${generalBadge}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
+            document.getElementById('pageInfo').innerText = `صفحة ${currentPage} من ${totalPages} (إجمالي: ${currentFilteredData.length})`;
+            document.getElementById('btnPrev').disabled = currentPage === 1;
+            document.getElementById('btnNext').disabled = currentPage === totalPages;
+        }
+
+        function formatAgencyCell(item, agencyKey) {
+            let agencyObj = item[agencyKey];
+            let sadir = String(agencyObj.sadir).replace(/\n/g, '<br>');
+            let warid = String(agencyObj.warid).replace(/\n/g, '<br>');
+            let stateText = String(agencyObj.state).replace(/\n/g, '<br>');
+
+            let badgeColor = "text-slate-400 bg-slate-100 border border-slate-200";
+            if (agencyObj.state.includes("يوجد تعارض") && !agencyObj.state.includes("لا")) badgeColor = "text-red-700 bg-red-50 font-bold border border-red-200";
+            else if (agencyObj.state.includes("لا") && (agencyObj.state.includes("يوجد") || agencyObj.state.includes("تعرض") || agencyObj.state.includes("تعارض"))) badgeColor = "text-emerald-700 bg-emerald-50 border border-emerald-200";
+            else if (agencyObj.state.includes("لم يتم الرد")) badgeColor = "text-amber-700 bg-amber-50 border border-amber-200";
+
+            let iconSvg = `<svg class="w-3.5 h-3.5 inline-block pdf-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+            
+            let sadirLink = agencyObj.sadirUrl ? `<a href="${agencyObj.sadirUrl}" target="_blank" onclick="event.stopPropagation()" title="عرض الوثيقة الصادرة">${iconSvg}</a>` : `<span class="block w-3.5 h-3.5"></span>`;
+            let waridLink = agencyObj.waridUrl ? `<a href="${agencyObj.waridUrl}" target="_blank" onclick="event.stopPropagation()" title="عرض الوثيقة الواردة">${iconSvg}</a>` : `<span class="block w-3.5 h-3.5"></span>`;
+
+            return `
+                <div onclick="openEditModal('${item.id}', '${agencyKey}', event)" title="انقر لتعديل البيانات أو رفع وثائق" class="p-2 rounded shadow-sm bg-white border border-slate-100 text-[10px] space-y-1.5 min-w-[140px] cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-md transition-all">
+                    
+                    <div class="flex justify-between items-center border-b border-slate-50 pb-1">
+                        <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span class="text-slate-400 shrink-0 w-4">ص:</span>
+                            <span class="font-bold text-slate-700 truncate" dir="ltr">${sadir}</span>
+                        </div>
+                        <div class="shrink-0 ml-1 w-5 flex justify-center">${sadirLink}</div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center border-b border-slate-50 pb-1">
+                        <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span class="text-slate-400 shrink-0 w-4">و:</span>
+                            <span class="font-bold text-slate-700 truncate" dir="ltr">${warid}</span>
+                        </div>
+                        <div class="shrink-0 ml-1 w-5 flex justify-center">${waridLink}</div>
+                    </div>
+
+                    <div class="text-center py-1 mt-1 rounded leading-tight ${badgeColor}">${stateText}</div>
+                </div>
+            `;
+        }
+
+        function updateIndicatorCards(filteredData, selectedAgency) {
+            let conflict = 0; let ready = 0; let pending = 0;
+            const readyCard = document.getElementById('readyProjectsCard');
+            const indicatorGrid = document.getElementById('indicatorCards');
+
+            if (selectedAgency !== 'all') {
+                readyCard.style.display = 'none'; indicatorGrid.classList.replace('lg:grid-cols-5', 'lg:grid-cols-4');
+            } else {
+                readyCard.style.display = 'flex'; indicatorGrid.classList.replace('lg:grid-cols-4', 'lg:grid-cols-5');
+            }
+
+            filteredData.forEach(item => {
+                let status = getRowActiveStatus(item, selectedAgency);
+                if (status === 'تعارض') conflict++;
+                else if (status === 'جاهز') ready++;
+                else pending++;
+            });
+
+            document.getElementById('totalProjects').innerText = filteredData.length;
+            document.getElementById('conflictProjects').innerText = conflict;
+            document.getElementById('noConflictProjects').innerText = ready; 
+            document.getElementById('readyProjects').innerText = ready; 
+            document.getElementById('pendingProjects').innerText = pending;
+        }
+
+        function initOrUpdateCharts(data, selectedAgency = 'all') {
+            const cityLabels = ['الدمام', 'الخبر', 'الظهران', 'أخرى'];
+            const cityData = [
+                data.filter(i => i.city === 'الدمام').length,
+                data.filter(i => i.city === 'الخبر').length,
+                data.filter(i => i.city === 'الظهران').length,
+                data.filter(i => i.city === 'غير محدد').length
+            ];
+
+            let barLabels = agenciesList.map(a => a.name);
+            let barKeys = agenciesList.map(a => a.key);
+            let barConflictData = calculateAgencyStats(data, 'يوجد تعارض');
+            let barReadyData = calculateAgencyStats(data, 'لايوجد تعارض');
+
+            if (selectedAgency !== 'all') {
+                const idx = barKeys.indexOf(selectedAgency);
+                if (idx !== -1) {
+                    barLabels = [barLabels[idx]]; barConflictData = [barConflictData[idx]]; barReadyData = [barReadyData[idx]];
+                }
+            }
+
+            if (cityPieChart) { cityPieChart.data.datasets[0].data = cityData; cityPieChart.update(); } 
+            else {
+                const ctxPie = document.getElementById('cityPieChart').getContext('2d');
+                cityPieChart = new Chart(ctxPie, {
+                    type: 'pie',
+                    data: { labels: cityLabels, datasets: [{ data: cityData, backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#94a3b8'], hoverOffset: 10 }] },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, 
+                        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo', size: 11 } } } },
+                        onClick: (e, activeEls) => {
+                            if(activeEls.length > 0) {
+                                let label = cityLabels[activeEls[0].index];
+                                document.getElementById('cityFilter').value = (label === 'أخرى') ? 'غير محدد' : label;
+                                filterData();
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (agenciesBarChart) {
+                agenciesBarChart.data.labels = barLabels;
+                agenciesBarChart.data.datasets[0].data = barConflictData;
+                agenciesBarChart.data.datasets[1].data = barReadyData;
+                agenciesBarChart.update();
+            } else {
+                const ctxAgencies = document.getElementById('agenciesBarChart').getContext('2d');
+                agenciesBarChart = new Chart(ctxAgencies, {
+                    type: 'bar',
+                    data: { labels: barLabels, datasets: [{ label: 'يوجد تعارض', data: barConflictData, backgroundColor: '#ef4444' }, { label: 'لا يوجد تعارض', data: barReadyData, backgroundColor: '#10b981' }] },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, 
+                        plugins: { legend: { position: 'top', labels: { font: { family: 'Cairo', size: 11 } } } },
+                        onClick: (e, activeEls, chart) => {
+                            if(activeEls.length > 0) {
+                                const idx = activeEls[0].index;
+                                const labelName = chart.data.labels[idx];
+                                const agKey = agenciesList.find(a => a.name === labelName)?.key;
+                                if(agKey) { document.getElementById('agencyFilter').value = agKey; filterData(); }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function calculateAgencyStats(data, targetState) {
+            return agenciesList.map(ag => {
+                return data.filter(item => {
+                    const state = item[ag.key]?.state || '';
+                    if (targetState === 'يوجد تعارض') return state.includes('يوجد') && !state.includes('لا');
+                    if (targetState === 'لايوجد تعارض') return state.includes('لا') && (state.includes('يوجد') || state.includes('تعرض') || state.includes('تعارض'));
+                    return false;
+                }).length;
+            });
+        }
+
+        function openModal(idStr) {
+            const id = isNaN(parseInt(idStr)) ? idStr : parseInt(idStr);
+            const project = currentFilteredData.find(p => p.id === id) || masterData.find(p => p.id === id);
+            if(!project) return;
+
+            document.getElementById('modalProjectName').innerText = project.name;
+            document.getElementById('modalId').innerText = project.id;
+            document.getElementById('modalCity').innerText = project.city;
+
+            let activeStatus = project.status; 
+            let badge = '';
+            if(activeStatus === 'جاهز') badge = '<span class="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow-sm">لا يوجد تعارض</span>';
+            else if(activeStatus === 'تعارض') badge = '<span class="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold shadow-sm">يوجد تعارض</span>';
+            else badge = '<span class="bg-amber-500 text-white px-2 py-1 rounded text-xs font-bold shadow-sm">جاري التنسيق</span>';
+            document.getElementById('modalStatus').innerHTML = badge;
+
+            const grid = document.getElementById('modalAgenciesGrid');
+            grid.innerHTML = '';
+            agenciesList.forEach(ag => {
+                const data = project[ag.key];
+                let colorCls = "bg-slate-50 text-slate-600"; // افتراضي
+                if(data.state.includes('يوجد') && !data.state.includes('لا')) colorCls = "bg-red-100 text-red-700 font-bold border border-red-200";
+                else if(data.state.includes('لا') && (data.state.includes('يوجد') || data.state.includes('تعارض'))) colorCls = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+
+                let iconSvg = `<svg class="w-4 h-4 inline-block pdf-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+                
+                let sadirLink = data.sadirUrl ? `<a href="${data.sadirUrl}" target="_blank" class="flex justify-center items-center w-full h-full" title="عرض الوثيقة الصادرة">${iconSvg}</a>` : ``;
+                let waridLink = data.waridUrl ? `<a href="${data.waridUrl}" target="_blank" class="flex justify-center items-center w-full h-full" title="عرض الوثيقة الواردة">${iconSvg}</a>` : ``;
+
+                // بناء كارت الجهة بترتيب عمودي أكثر إحكاماً 
+                grid.innerHTML += `
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                        <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-100">
+                            <h5 class="text-[11px] font-bold text-slate-800">${ag.name}</h5>
+                            <button onclick="openEditModal('${project.id}', '${ag.key}', event)" class="text-blue-500 hover:text-blue-700 transition-colors p-1 bg-blue-50 rounded hover:bg-blue-100">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="space-y-2.5 mb-3 flex-1">
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-bold text-slate-400">الخطاب الصادر:</span>
+                                <div class="flex justify-between items-start gap-2">
+                                    <span class="text-xs font-bold text-slate-700 break-words leading-snug" dir="ltr" style="text-align: right; width: 100%;">${data.sadir || '-'}</span>
+                                    <div class="shrink-0 mt-0.5">${sadirLink}</div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-bold text-slate-400">الخطاب الوارد:</span>
+                                <div class="flex justify-between items-start gap-2">
+                                    <span class="text-xs font-bold text-slate-700 break-words leading-snug" dir="ltr" style="text-align: right; width: 100%;">${data.warid || '-'}</span>
+                                    <div class="shrink-0 mt-0.5">${waridLink}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center text-[11px] py-1.5 font-bold rounded-lg ${colorCls}">${data.state || '-'}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('projectModal').classList.remove('hidden');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').classList.add('hidden');
+            document.body.classList.remove('modal-active');
+        }
+
+        function exportToExcel() {
+            if(currentFilteredData.length === 0) { alert('لا يوجد بيانات للتصدير!'); return; }
+            
+            const selectedAgency = document.getElementById('agencyFilter').value;
+            
+            const exportArr = currentFilteredData.map(item => {
+                let obj = {
+                    'م': item.id,
+                    'اسم المشروع': item.name,
+                    'المدينة': item.city,
+                };
+                agenciesList.forEach(ag => {
+                    if (selectedAgency === 'all' || selectedAgency === ag.key) {
+                        obj[`${ag.name} (حالة)`] = item[ag.key].state;
+                    }
+                });
+                obj['الوضعية العامة'] = getRowActiveStatus(item, selectedAgency);
+                return obj;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportArr);
+            ws['!dir'] = 'rtl'; 
+            
+            const colWidths = [{wch: 6}, {wch: 55}, {wch: 15}];
+            agenciesList.forEach(ag => { if (selectedAgency === 'all' || selectedAgency === ag.key) colWidths.push({wch: 35}); });
+            colWidths.push({wch: 20});
+            ws['!cols'] = colWidths;
+
+            let conflict = 0, ready = 0, pending = 0;
+            currentFilteredData.forEach(item => {
+                let activeStatus = getRowActiveStatus(item, selectedAgency);
+                if(activeStatus === 'تعارض') conflict++;
+                else if(activeStatus === 'جاهز') ready++;
+                else pending++;
+            });
+
+            const getSelectText = (id) => {
+                const el = document.getElementById(id);
+                return el.options[el.selectedIndex].text;
+            };
+
+            const summaryDataAoA = [
+                ["ملخص أداء لوحة القيادة لمتابعة المشاريع والتعارضات", ""],
+                ["", ""],
+                ["--- محددات البحث والفلاتر (النشطة حالياً) ---", ""],
+                ["البحث عن مشروع:", document.getElementById('searchInput').value || "لا يوجد بحث نصي"],
+                ["المنطقة / المدينة:", getSelectText('cityFilter')],
+                ["الحالة العامة للمشروع:", getSelectText('statusFilter')],
+                ["الجهة الخدمية المحددة:", getSelectText('agencyFilter')],
+                ["حالة التعارض المحددة:", getSelectText('conflictTypeFilter')],
+                ["", ""],
+                ["--- المؤشرات الإحصائية العامة ---", ""],
+                ["إجمالي المشاريع بالجدول:", currentFilteredData.length],
+                ["مشاريع بها تعارض مؤكد:", conflict],
+                ["مشاريع لا يوجد بها تعارض:", ready],
+                ["قيد الدراسة والتنسيق (جاري):", pending]
+            ];
+
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryDataAoA);
+            wsSummary['!dir'] = 'rtl'; 
+            wsSummary['!cols'] = [{wch: 45}, {wch: 30}];
+
+            const wb = XLSX.utils.book_new();
+            
+            if(!wb.Workbook) wb.Workbook = {};
+            if(!wb.Workbook.Views) wb.Workbook.Views = [];
+            wb.Workbook.Views.push({ RTL: true });
+
+            XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص لوحة القيادة");
+            XLSX.utils.book_append_sheet(wb, ws, "تفاصيل التعارضات");
+            
+            XLSX.writeFile(wb, `تقرير_متابعة_التعارضات_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+    </script>
+</body>
+</html>
