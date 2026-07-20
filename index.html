@@ -202,7 +202,7 @@
                     <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
                         <div>
                             <h4 class="text-sm font-bold text-slate-900">سجل خطابات الجهات والتعارضات المرصودة تفصيلياً</h4>
-                            <p class="text-xs text-slate-500 mt-0.5">انقر على صندوق بيانات الجهة لتعديل الخطابات ورفع الوثائق (PDF) عبر قاعدة البيانات السحابية.</p>
+                            <p class="text-xs text-slate-500 mt-0.5">انقر على صندوق بيانات الجهة لتعديل الخطابات والملاحظات ورفع الوثائق (PDF).</p>
                         </div>
                         
                         <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
@@ -280,7 +280,6 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5" id="modalAgenciesGrid"></div>
             </div>
             <div class="px-6 py-4 border-t border-slate-100 bg-white flex justify-end">
-                <!-- تم تغيير اسم الزر هنا إلى "إغلاق" -->
                 <button onclick="closeModal()" class="bg-slate-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition shadow-sm">إغلاق</button>
             </div>
         </div>
@@ -296,7 +295,7 @@
                 </h3>
                 <button onclick="closeEditModal()" class="text-slate-400 hover:text-red-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 <p class="text-xs text-slate-500 font-bold mb-4">المشروع: <span id="editProjectName" class="text-slate-800"></span><br>الجهة: <span id="editAgencyName" class="text-blue-600"></span></p>
                 
                 <input type="hidden" id="editProjectId">
@@ -320,7 +319,13 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">حالة التعارض (الرد)</label>
-                    <textarea id="editState" rows="3" class="w-full bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                    <textarea id="editState" rows="2" class="w-full bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                </div>
+
+                <!-- الإضافة الجديدة للملاحظات -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">الملاحظات</label>
+                    <textarea id="editNotes" rows="2" class="w-full bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm placeholder-slate-400" placeholder="أضف ملاحظات إضافية هنا..."></textarea>
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
@@ -475,14 +480,16 @@
                 }
             }
 
+            // تم تحديث الدالة لتقرأ عمود الملاحظات (+5)
             const extractAgency = (row, colIndex) => {
-                if (colIndex === undefined) return { sadir: '-', sadirUrl: null, warid: '-', waridUrl: null, state: '-' };
+                if (colIndex === undefined) return { sadir: '-', sadirUrl: null, warid: '-', waridUrl: null, state: '-', notes: '-' };
                 return {
                     sadir: cleanString(row[colIndex]?.text),
                     sadirUrl: row[colIndex+1]?.url || null,
                     warid: cleanString(row[colIndex+2]?.text),
                     waridUrl: row[colIndex+3]?.url || null,
-                    state: cleanString(row[colIndex+4]?.text)
+                    state: cleanString(row[colIndex+4]?.text),
+                    notes: cleanString(row[colIndex+5]?.text) // قراءة الملاحظات
                 };
             };
 
@@ -547,6 +554,7 @@
             document.getElementById('editSadir').value = data.sadir === '-' ? '' : data.sadir;
             document.getElementById('editWarid').value = data.warid === '-' ? '' : data.warid;
             document.getElementById('editState').value = data.state === '-' ? '' : data.state;
+            document.getElementById('editNotes').value = data.notes === '-' ? '' : data.notes; // جلب الملاحظات
             
             document.getElementById('editSadirFile').value = '';
             document.getElementById('editWaridFile').value = '';
@@ -575,6 +583,7 @@
             const newSadir = document.getElementById('editSadir').value.trim() || '-';
             const newWarid = document.getElementById('editWarid').value.trim() || '-';
             const newState = document.getElementById('editState').value.trim() || '-';
+            const newNotes = document.getElementById('editNotes').value.trim() || '-'; // التقاط الملاحظات الجديدة
 
             const projectIndex = masterData.findIndex(p => p.id === projectId);
             if(projectIndex === -1) return;
@@ -594,6 +603,7 @@
                 sadir: newSadir,
                 warid: newWarid,
                 state: newState,
+                notes: newNotes, // إرسال الملاحظات ضمن الداتا
                 old_sadir_url: project[agencyKey].sadirUrl,
                 old_warid_url: project[agencyKey].waridUrl
             };
@@ -615,6 +625,7 @@
                     masterData[projectIndex][agencyKey].sadir = newSadir;
                     masterData[projectIndex][agencyKey].warid = newWarid;
                     masterData[projectIndex][agencyKey].state = newState;
+                    masterData[projectIndex][agencyKey].notes = newNotes; // تحديث المصفوفة المحلية
                     if(result.sadirUrl) masterData[projectIndex][agencyKey].sadirUrl = result.sadirUrl;
                     if(result.waridUrl) masterData[projectIndex][agencyKey].waridUrl = result.waridUrl;
 
@@ -817,6 +828,9 @@
             let sadirLink = agencyObj.sadirUrl ? `<a href="${agencyObj.sadirUrl}" target="_blank" onclick="event.stopPropagation()" title="عرض الوثيقة الصادرة">${iconSvg}</a>` : `<span class="block w-3.5 h-3.5"></span>`;
             let waridLink = agencyObj.waridUrl ? `<a href="${agencyObj.waridUrl}" target="_blank" onclick="event.stopPropagation()" title="عرض الوثيقة الواردة">${iconSvg}</a>` : `<span class="block w-3.5 h-3.5"></span>`;
 
+            // إضافة مقتطف الملاحظات في كارت الجدول إن وجد
+            let notesSnippet = (agencyObj.notes && agencyObj.notes !== '-') ? `<div class="mt-1 pt-1 border-t border-slate-100 text-slate-500 text-[9px] overflow-hidden text-ellipsis text-right" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" title="${String(agencyObj.notes)}">${String(agencyObj.notes).replace(/\n/g, '<br>')}</div>` : '';
+
             return `
                 <div onclick="openEditModal('${item.id}', '${agencyKey}', event)" title="انقر لتعديل البيانات أو رفع وثائق" class="p-2 rounded shadow-sm bg-white border border-slate-100 text-[10px] space-y-1.5 min-w-[140px] cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-md transition-all">
                     
@@ -837,6 +851,7 @@
                     </div>
 
                     <div class="text-center py-1 mt-1 rounded leading-tight ${badgeColor}">${stateText}</div>
+                    ${notesSnippet}
                 </div>
             `;
         }
@@ -964,7 +979,7 @@
             grid.innerHTML = '';
             agenciesList.forEach(ag => {
                 const data = project[ag.key];
-                let colorCls = "bg-slate-50 text-slate-600"; // افتراضي
+                let colorCls = "bg-slate-50 text-slate-600"; 
                 if(data.state.includes('يوجد') && !data.state.includes('لا')) colorCls = "bg-red-100 text-red-700 font-bold border border-red-200";
                 else if(data.state.includes('لا') && (data.state.includes('يوجد') || data.state.includes('تعارض'))) colorCls = "bg-emerald-100 text-emerald-700 border border-emerald-200";
 
@@ -973,7 +988,9 @@
                 let sadirLink = data.sadirUrl ? `<a href="${data.sadirUrl}" target="_blank" class="flex justify-center items-center w-full h-full" title="عرض الوثيقة الصادرة">${iconSvg}</a>` : ``;
                 let waridLink = data.waridUrl ? `<a href="${data.waridUrl}" target="_blank" class="flex justify-center items-center w-full h-full" title="عرض الوثيقة الواردة">${iconSvg}</a>` : ``;
 
-                // بناء كارت الجهة بترتيب عمودي أكثر إحكاماً 
+                // عرض الملاحظات في النافذة المنبثقة
+                let notesHtml = (data.notes && data.notes !== '-') ? `<div class="mt-2 text-[10px] text-slate-600 bg-slate-50/80 p-2 rounded border border-slate-100 text-right w-full break-words"><span class="font-bold text-slate-800">ملاحظات: </span>${String(data.notes).replace(/\n/g, '<br>')}</div>` : '';
+
                 grid.innerHTML += `
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
                         <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-100">
@@ -999,6 +1016,7 @@
                             </div>
                         </div>
                         <div class="text-center text-[11px] py-1.5 font-bold rounded-lg ${colorCls}">${data.state || '-'}</div>
+                        ${notesHtml}
                     </div>
                 `;
             });
@@ -1026,6 +1044,7 @@
                 agenciesList.forEach(ag => {
                     if (selectedAgency === 'all' || selectedAgency === ag.key) {
                         obj[`${ag.name} (حالة)`] = item[ag.key].state;
+                        obj[`${ag.name} (ملاحظات)`] = item[ag.key].notes; // تضمين الملاحظات بالتصدير
                     }
                 });
                 obj['الوضعية العامة'] = getRowActiveStatus(item, selectedAgency);
@@ -1036,7 +1055,7 @@
             ws['!dir'] = 'rtl'; 
             
             const colWidths = [{wch: 6}, {wch: 55}, {wch: 15}];
-            agenciesList.forEach(ag => { if (selectedAgency === 'all' || selectedAgency === ag.key) colWidths.push({wch: 35}); });
+            agenciesList.forEach(ag => { if (selectedAgency === 'all' || selectedAgency === ag.key) { colWidths.push({wch: 30}); colWidths.push({wch: 40}); } }); // مساحة للأعمدة الإضافية
             colWidths.push({wch: 20});
             ws['!cols'] = colWidths;
 
